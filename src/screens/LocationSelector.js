@@ -5,7 +5,7 @@ import MapView, { Marker } from 'react-native-maps';
 import SubmitButton from '../components/SubmitButton';
 import { mapStaticApi } from '../firebase/googleApi';
 import { useSelector } from 'react-redux';
-import { usePostUserLocationMutation } from '../services/users';
+import { useUpdateUserLocationMutation } from '../services/users';
 
 const LocationSelector = ({ navigation }) => {
     const [location, setLocation] = useState({
@@ -14,7 +14,7 @@ const LocationSelector = ({ navigation }) => {
     });
     const [address, setAddress] = useState('');
     const localId = useSelector(state => state.auth.localId);
-    const [triggerPostUserLocation] = usePostUserLocationMutation();
+    const [triggerUpdateUserLocation] = useUpdateUserLocationMutation(); 
 
     useEffect(() => {
         const requestLocationPermission = async () => {
@@ -23,6 +23,7 @@ const LocationSelector = ({ navigation }) => {
                 Alert.alert("Permiso de ubicación denegado", "No se puede acceder a la ubicación. Habilita los permisos en la configuración.", [{ text: "OK" }]);
                 return;
             }
+
             const newLocation = await Location.getCurrentPositionAsync();
             setLocation({
                 latitude: newLocation.coords.latitude,
@@ -35,11 +36,15 @@ const LocationSelector = ({ navigation }) => {
 
     useEffect(() => {
         const fetchAddress = async () => {
-            if (location.latitude) {
-                const urlReverseGeoding = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=${mapStaticApi}`;
-                const response = await fetch(urlReverseGeoding);
-                const data = await response.json();
-                setAddress(data.results[0]?.formatted_address || '');
+            if (location.latitude && location.longitude) {
+                try {
+                    const urlReverseGeoding = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${location.latitude},${location.longitude}&key=${mapStaticApi}`;
+                    const response = await fetch(urlReverseGeoding);
+                    const data = await response.json();
+                    setAddress(data.results[0]?.formatted_address || '');
+                } catch (error) {
+                    console.error("Error fetching address:", error);
+                }
             }
         };
 
@@ -59,7 +64,9 @@ const LocationSelector = ({ navigation }) => {
             ...location,
             address,
         };
-        await triggerPostUserLocation({ localId, userLocation });
+        
+        // Llamar a la mutación de actualización
+        await triggerUpdateUserLocation({ localId, userLocation });
         Alert.alert("Ubicación actualizada", "Tu ubicación se ha actualizado correctamente.");
         navigation.navigate('MyProfile');
     };
@@ -67,18 +74,20 @@ const LocationSelector = ({ navigation }) => {
     return (
         <View style={styles.container}>
             <Text>Dirección: {address}</Text>
-            <MapView
-                style={styles.map}
-                initialRegion={{
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    latitudeDelta: 0.01,
-                    longitudeDelta: 0.01, 
-                }}
-                onPress={handleMapPress} 
-            >
-                <Marker coordinate={location} />
-            </MapView>
+            {location.latitude !== 0 && location.longitude !== 0 && (
+                <MapView
+                    style={styles.map}
+                    initialRegion={{
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                        latitudeDelta: 0.01,
+                        longitudeDelta: 0.01, 
+                    }}
+                    onPress={handleMapPress} 
+                >
+                    <Marker coordinate={location} />
+                </MapView>
+            )}
             <SubmitButton title="Confirmar Ubicación" onPress={handleConfirmLocation} />
         </View>
     );

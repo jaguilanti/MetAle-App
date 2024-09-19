@@ -14,8 +14,16 @@ export const usersApi = createApi({
             }),
             invalidatesTags: ["userImage"],
         }),
+        updateUserLocation: builder.mutation({ 
+            query: ({ localId, userLocation }) => ({
+                url: `users/${localId}/locations/${userLocation.id}.json`,
+                method: "PATCH",
+                body: userLocation,
+            }),
+            invalidatesTags: ["userLocation"],
+        }),
         postUserLocation: builder.mutation({
-            query: ({ localId, userLocation }) => {               
+            query: ({ localId, userLocation }) => {
                 return {
                     url: `users/${localId}/locations/${userLocation.id || ''}.json`,
                     method: userLocation.id ? "PATCH" : "POST",
@@ -45,5 +53,6 @@ export const usersApi = createApi({
 export const {
     usePatchImageProfileMutation,
     usePostUserLocationMutation,
+    useUpdateUserLocationMutation, 
     useGetUserQuery,
 } = usersApi;
